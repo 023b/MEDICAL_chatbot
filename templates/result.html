@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Disease Prediction Results</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- jsPDF Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f6f9;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            margin-top: 30px;
+            padding: 30px;
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.1);
+            border: 1px solid #ddd;
+        }
+
+        h1, h4 {
+            color: #333;
+        }
+
+        hr {
+            border-top: 2px solid #ddd;
+        }
+
+        .chart-container {
+            margin: 30px 0;
+            max-width: 60%; /* Adjust the max width to make the chart thinner */
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .card {
+            margin-bottom: 20px;
+            border: none;
+        }
+
+        .btn-primary {
+            background-color: #007bff;
+            border-color: #007bff;
+        }
+
+        .btn-primary:hover {
+            background-color: #0056b3;
+            border-color: #0056b3;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        /* Colorful Severity */
+        .severity-high {
+            background-color: #f44336;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+        }
+
+        .severity-medium {
+            background-color: #ff9800;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+        }
+
+        .severity-low {
+            background-color: #4caf50;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+        }
+
+        /* Watermark Styling */
+        .watermark {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            font-size: 12px;
+            color: #999;
+            opacity: 0.2;
+            transform: rotate(30deg);
+            pointer-events: none;
+        }
+
+        /* Print-specific Styles */
+        @media print {
+            body {
+                background-color: #ffffff;
+                margin: 0;
+                padding: 0;
+            }
+
+            .container {
+                padding: 20px;
+                box-shadow: none;
+                border: none;
+            }
+
+            h1, h4 {
+                color: #333;
+                text-align: center;
+            }
+
+            hr {
+                border-top: 2px solid #000;
+                margin: 20px 0;
+            }
+
+            .btn-primary {
+                display: none;
+            }
+
+            /* Remove watermark from print */
+            .watermark {
+                display: none;
+            }
+
+            /* Chart area */
+            .chart-container {
+                page-break-before: always;
+                margin-bottom: 30px;
+            }
+
+            .severity-high, .severity-medium, .severity-low {
+                font-weight: bold;
+            }
+
+            .card {
+                page-break-inside: avoid;
+            }
+
+            .container {
+                page-break-after: always;
+            }
+
+            /* Ensure it fits the page well */
+            .container, .card-body {
+                width: 100%;
+            }
+        }
+
+        /* Responsive Layout */
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+
+            .chart-container {
+                width: 100%;
+                overflow-x: auto;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container" id="contentToExport">
+        <h1 class="mb-4">Disease Prediction Report</h1>
+        <hr>
+
+        <!-- Patient Details -->
+        <div class="card">
+            <div class="card-body">
+                <h4>Patient Details</h4>
+                <p><strong>Name:</strong> {{ name }}</p>
+                <p><strong>Age:</strong> {{ age }}</p>
+                <p><strong>Blood Group:</strong> {{ blood_group }}</p>
+            </div>
+        </div>
+
+        <!-- Predicted Diseases -->
+        <div class="card">
+            <div class="card-body">
+                <h4>Predicted Diseases</h4>
+                <ul>
+                    {% for model, prediction in results.items() %}
+                    <li><strong>{{ model }}:</strong> {{ prediction }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+
+        <!-- Confidence Scores -->
+        <div class="card">
+            <div class="card-body">
+                <h4>Confidence Scores</h4>
+                <ul>
+                    {% for model, confidence in confidences.items() %}
+                    <li><strong>{{ model }}:</strong> {{ confidence }}%</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+
+        <!-- Severity Levels -->
+        <div class="card">
+            <div class="card-body">
+                <h4>Severity Levels</h4>
+                <ul>
+                    {% for model, severity in severity_levels.items() %}
+                    <li>
+                        <strong>{{ model }}:</strong>
+                        <span class="severity-{{ severity|lower }}">{{ severity }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+
+        <!-- Recommendations -->
+        <div class="card">
+            <div class="card-body">
+                <h4>Recommendations</h4>
+                <ul>
+                    {% for model, recommendation in recommendations.items() %}
+                    <li><strong>{{ model }}:</strong> {{ recommendation }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+
+        <!-- Model Confidence Chart -->
+        <div class="chart-container">
+            <h4>Model Confidence Comparison</h4>
+            <canvas id="confidenceChart" width="400" height="200"></canvas> <!-- Adjusted width and height -->
+        </div>
+
+        <!-- Watermark -->
+        <p class="watermark">Generated by AI</p>
+    </div>
+
+    <!-- Chart.js Script -->
+    <script>
+        const ctx = document.getElementById('confidenceChart').getContext('2d');
+        const confidenceChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: Object.keys({{ confidences|tojson }}),
+                datasets: [{
+                    label: 'Confidence (%)',
+                    data: Object.values({{ confidences|tojson }}),
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.2)',
+                        'rgba(54, 162, 235, 0.2)',
+                        'rgba(255, 206, 86, 0.2)',
+                        'rgba(75, 192, 192, 0.2)',
+                        'rgba(153, 102, 255, 0.2)',
+                        'rgba(255, 159, 64, 0.2)'
+                    ],
+                    borderColor: [
+                        'rgba(255, 99, 132, 1)',
+                        'rgba(54, 162, 235, 1)',
+                        'rgba(255, 206, 86, 1)',
+                        'rgba(75, 192, 192, 1)',
+                        'rgba(153, 102, 255, 1)',
+                        'rgba(255, 159, 64, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+
+</html>
